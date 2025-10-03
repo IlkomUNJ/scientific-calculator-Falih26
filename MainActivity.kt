@@ -62,7 +62,7 @@ fun CalculatorScreen() {
             Text(
                 text = output,
                 fontSize = 40.sp,
-                color = Color.Green,
+                color = Color.White,
                 modifier = Modifier.padding(4.dp)
             )
         }
@@ -202,78 +202,83 @@ fun CalculatorScreen() {
     }
 }
 fun calculateExpression(expr: String): Double {
-    var e = expr.replace(" ", "")
+    val e = expr.replace(" ", "")
 
-    if (e.contains("!")) {
-        val num = e.replace("!", "").toInt()
-        var res = 1
-        for (i in 1..num) res *= i
-        return res.toDouble()
-    }
-    if (e.startsWith("sqrt(")) {
-        val inside = e.removePrefix("sqrt(").removeSuffix(")")
-        return sqrt(calculateExpression(inside))
-    }
-    if (e.contains("^")) {
-        val parts = e.split("^")
-        return calculateExpression(parts[0]).pow(calculateExpression(parts[1]))
-    }
-    if (e.startsWith("1/(")) {
-        val inside = e.removePrefix("1/(").removeSuffix(")")
-        return 1.0 / calculateExpression(inside)
-    }
-    if (e.contains("+")) {
-        val p = e.split("+")
-        return calculateExpression(p[0]) + calculateExpression(p[1])
-    }
-    if (e.contains("-")) {
-        val p = e.split("-")
-        if (p[0].isEmpty()) return -calculateExpression(p[1])
-        return calculateExpression(p[0]) - calculateExpression(p[1])
-    }
-    if (e.contains("*")) {
-        val p = e.split("*")
-        return calculateExpression(p[0]) * calculateExpression(p[1])
-    }
-    if (e.contains("/")) {
-        val p = e.split("/")
-        return calculateExpression(p[0]) / calculateExpression(p[1])
-    }
-    if (e.startsWith("log(")) {
-        val inside = e.removePrefix("log(").removeSuffix(")")
-        return ln(calculateExpression(inside)) / ln(10.0)
-    }
-    if (e.startsWith("ln(")) {
-        val inside = e.removePrefix("ln(").removeSuffix(")")
-        return ln(calculateExpression(inside))
-    }
-    if (e.startsWith("sin(")) {
-        val inside = e.removePrefix("sin(").removeSuffix(")")
-        return sin(calculateExpression(inside))
-    }
-    if (e.startsWith("cos(")) {
-        val inside = e.removePrefix("cos(").removeSuffix(")")
-        return cos(calculateExpression(inside))
-    }
-    if (e.startsWith("tan(")) {
-        val inside = e.removePrefix("tan(").removeSuffix(")")
-        return tan(calculateExpression(inside))
-    }
-    if (e.startsWith("asin(")) {
-        val inside = e.removePrefix("asin(").removeSuffix(")")
-        return asin(calculateExpression(inside))
-    }
-    if (e.startsWith("acos(")) {
-        val inside = e.removePrefix("acos(").removeSuffix(")")
-        return acos(calculateExpression(inside))
-    }
-    if (e.startsWith("atan(")) {
-        val inside = e.removePrefix("atan(").removeSuffix(")")
-        return atan(calculateExpression(inside))
+    fun eval(e: String): Double {
+        if (e.isEmpty()) return 0.0
+
+        if (e.endsWith("!")) {
+            val inner = e.dropLast(1)
+            val num = eval(inner).toInt()
+            var res = 1
+            for (i in 1..num) res *= i
+            return res.toDouble()
+        }
+
+        var depth = 0
+        for (i in e.length - 1 downTo 0) {
+            when (e[i]) {
+                ')' -> depth++
+                '(' -> depth--
+                '+', '-' -> if (depth == 0 && i > 0) {
+                    val left = e.substring(0, i)
+                    val right = e.substring(i + 1)
+                    return if (e[i] == '+')
+                        eval(left) + eval(right)
+                    else
+                        eval(left) - eval(right)
+                }
+            }
+        }
+
+        depth = 0
+        for (i in e.length - 1 downTo 0) {
+            when (e[i]) {
+                ')' -> depth++
+                '(' -> depth--
+                '*', '/' -> if (depth == 0) {
+                    val left = e.substring(0, i)
+                    val right = e.substring(i + 1)
+                    return if (e[i] == '*')
+                        eval(left) * eval(right)
+                    else
+                        eval(left) / eval(right)
+                }
+            }
+        }
+
+        depth = 0
+        for (i in e.length - 1 downTo 0) {
+            when (e[i]) {
+                ')' -> depth++
+                '(' -> depth--
+                '^' -> if (depth == 0) {
+                    val left = e.substring(0, i)
+                    val right = e.substring(i + 1)
+                    return eval(left).pow(eval(right))
+                }
+            }
+        }
+        if (e.startsWith("sqrt(")) return sqrt(eval(e.drop(5).dropLast(1)))
+        if (e.startsWith("log(")) return ln(eval(e.drop(4).dropLast(1))) / ln(10.0)
+        if (e.startsWith("ln(")) return ln(eval(e.drop(3).dropLast(1)))
+        if (e.startsWith("sin(")) return sin(eval(e.drop(4).dropLast(1)))
+        if (e.startsWith("cos(")) return cos(eval(e.drop(4).dropLast(1)))
+        if (e.startsWith("tan(")) return tan(eval(e.drop(4).dropLast(1)))
+        if (e.startsWith("asin(")) return asin(eval(e.drop(5).dropLast(1)))
+        if (e.startsWith("acos(")) return acos(eval(e.drop(5).dropLast(1)))
+        if (e.startsWith("atan(")) return atan(eval(e.drop(5).dropLast(1)))
+
+        if (e.startsWith("(") && e.endsWith(")")) {
+            return eval(e.substring(1, e.length - 1))
+        }
+
+        return e.toDoubleOrNull() ?: 0.0
     }
 
-    return e.toDoubleOrNull() ?: 0.0
+    return eval(e)
 }
+
 
 @Composable
 fun CalculatorButton(symbol: String, color: Color? = null, onClick: () -> Unit) {
